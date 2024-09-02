@@ -3,19 +3,6 @@ def call(Map config = [:]) {
         agent any
 
         stages {
-            stage('Checkout') {
-                steps {
-                    script {
-                        checkout scm
-                        env.GIT_COMMIT_HASH = sh(
-                            script: 'git rev-parse --short HEAD',
-                            returnStdout: true
-                        ).trim()
-
-                        echo "Git Commit Hash: ${env.GIT_COMMIT_HASH}"
-                    }
-                }
-            }
             stage('Build') {
                 steps {
                     script {
@@ -23,13 +10,13 @@ def call(Map config = [:]) {
                         sh 'ls -la'
 
                         if (config.projectType == 'laravel') {
-                            echo "docker build -t laravel-${config.projectName}:${env.GIT_COMMIT_HASH}."
+                            echo "docker build -t laravel-${config.projectName}"
                         } else if (config.projectType == 'golang') {
-                            echo "docker build -t golang-${config.projectName}:${env.GIT_COMMIT_HASH}."
+                            echo "docker build -t golang-${config.projectName}"
                         } else if (config.projectType == 'java') {
-                            echo "docker build -t java-${config.projectName}:${env.GIT_COMMIT_HASH}."
+                            echo "docker build -t java-${config.projectName}"
                         } else {
-                            echo "docker build -t other-${config.projectName}:${env.GIT_COMMIT_HASH}."
+                            echo "docker build -t other-${config.projectName}"
                         }
                     }
                 }
@@ -55,9 +42,9 @@ def call(Map config = [:]) {
                 steps {
                     script {
                         if (config.createHelm) {
-                         echo "helm upgrade --install ${config.projectName} mychart"
+                            echo "helm upgrade --install ${config.projectName} mychart"
                         }
-                        echo "docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
+                        echo "docker push ${config.projectType}-${config.projectName}"
                     }
                 }
             }
