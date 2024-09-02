@@ -3,6 +3,19 @@ def call(Map config = [:]) {
         agent any
 
         stages {
+            stage('Prepare Environtment') {
+                steps {
+                    script {
+                        checkout scm
+                        env.GIT_COMMIT_HASH = sh(
+                            script: 'git rev-parse --short HEAD',
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Git Commit Hash: ${env.GIT_COMMIT_HASH}"
+                    }
+                }
+            }
             stage('Build') {
                 steps {
                     script {
@@ -10,13 +23,13 @@ def call(Map config = [:]) {
                         sh 'ls -la'
 
                         if (config.projectType == 'laravel') {
-                            echo "docker build -t laravel-${config.projectName}"
+                            echo "docker build -t laravel-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         } else if (config.projectType == 'golang') {
-                            echo "docker build -t golang-${config.projectName}"
+                            echo "docker build -t golang-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         } else if (config.projectType == 'java') {
-                            echo "docker build -t java-${config.projectName}"
+                            echo "docker build -t java-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         } else {
-                            echo "docker build -t other-${config.projectName}"
+                            echo "docker build -t other-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         }
                     }
                 }
@@ -38,17 +51,7 @@ def call(Map config = [:]) {
                     }
                 }
             }
-            stage('Deploy') {
-                steps {
-                    script {
-                        if (config.createHelm) {
-                            echo "helm upgrade --install ${config.projectName} mychart"
-                        }
-                        echo "docker push ${config.projectType}-${config.projectName}"
-                    }
-                }
-            }
-            stage('Test') {
+             stage('Test') {
                 steps {
                     script {
                         if (config.projectType == 'java' && config.shouldRunJavaUnitTest) {
@@ -60,6 +63,16 @@ def call(Map config = [:]) {
                         if (config.projectType == 'golang' && config.shouldRunGoUnitTest) {
                             echo "go test ./..."
                         }
+                    }
+                }
+            }
+            stage('Deploy') {
+                steps {
+                    script {
+                        if (config.createHelm) {
+                         echo "helm upgrade --install ${config.projectName} mychart"
+                        }
+                        echo "docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
                     }
                 }
             }
