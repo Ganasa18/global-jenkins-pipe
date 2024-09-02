@@ -1,6 +1,4 @@
-def call(body) {
-    def config = body
-
+def call(Map body = [:]) {
     pipeline {
         agent any
 
