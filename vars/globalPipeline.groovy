@@ -3,17 +3,33 @@ def call(Map config = [:]) {
         agent any
 
         stages {
+            stage('Checkout') {
+                steps {
+                    script {
+                        checkout scm
+                        env.GIT_COMMIT_HASH = sh(
+                            script: 'git rev-parse --short HEAD',
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Git Commit Hash: ${env.GIT_COMMIT_HASH}"
+                    }
+                }
+            }
             stage('Build') {
                 steps {
                     script {
+                        // Run shell command using 'sh'
+                        sh 'ls -la'
+
                         if (config.projectType == 'laravel') {
-                            echo "docker build -t my-laravel-image ."
+                            echo "docker build -t laravel-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         } else if (config.projectType == 'golang') {
-                            echo "docker build -t my-golang-image ."
+                            echo "docker build -t golang-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         } else if (config.projectType == 'java') {
-                            echo "docker build -t my-java-image ."
+                            echo "docker build -t java-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         } else {
-                            echo "docker build -t my-image ."
+                            echo "docker build -t other-${config.projectName}:${env.GIT_COMMIT_HASH}."
                         }
                     }
                 }
@@ -24,6 +40,7 @@ def call(Map config = [:]) {
                         if (config.createHelm) {
                          echo "helm upgrade --install ${config.projectName} mychart"
                         }
+                        echo "docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
                     }
                 }
             }
