@@ -8,33 +8,33 @@ def call(body) {
             stage('Build') {
                 steps {
                     if (config.projectType == 'laravel') {
-                        println "docker build -t my-laravel-image ."
+                        sh "echo docker build -t my-laravel-image ."
                     } else if (config.projectType == 'golang') {
-                        println "docker build -t my-golang-image ."
+                         sh "echo docker build -t my-golang-image ."
                     } else if (config.projectType == 'java') {
-                        println "docker build -t my-java-image ."
+                         sh "echo docker build -t my-java-image ."
                     } else {
-                        println "docker build -t my-image ."
+                         sh "echo docker build -t my-image ."
                     }
                 }
             }
             stage('Deploy') {
                 steps {
                     if (config.createHelm) {
-                        println "helm upgrade --install ${config.projectName} mychart"
+                         sh "echo helm upgrade --install ${config.projectName} mychart"
                     }
                 }
             }
             stage('Test') {
                 steps {
                     if (config.projectType == 'java' && config.shouldRunJavaUnitTest) {
-                        println "mvn test"
+                         sh "echo mvn test"
                     }
                     if (config.projectType == 'java' && config.shouldRunJavaIntegrationTest) {
-                        println "mvn integration-test"
+                         sh "echo mvn integration-test"
                     }
                     if (config.projectType == 'golang' && config.shouldRunGoUnitTest) {
-                        println "go test ./..."
+                         sh "echo go test ./..."
                     }
                 }
             }
