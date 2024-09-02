@@ -34,6 +34,23 @@ def call(Map config = [:]) {
                     }
                 }
             }
+            stage('Approval') {
+                steps {
+                    script {
+                        // Interactive prompt for approval
+                        def userInput = input(
+                            message: 'Do you want to proceed with the deployment?',
+                            parameters: [
+                                [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Approve Deployment?', name: 'Approve']
+                            ]
+                        )
+
+                        if (!userInput) {
+                            error("Deployment was not approved. Aborting pipeline.")
+                        }
+                    }
+                }
+            }
             stage('Deploy') {
                 steps {
                     script {
