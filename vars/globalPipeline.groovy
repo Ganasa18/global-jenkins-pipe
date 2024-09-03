@@ -113,7 +113,7 @@ def call(Map config = [:]) {
                             sleep time: 10, unit: 'SECONDS'
                             
                             echo "Pruning Docker images"
-                            sh "docker image prune --all"
+                            sh "docker image prune --all -f"
                         } else {
                             echo "Pushing Docker image: docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
                             sh "docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
