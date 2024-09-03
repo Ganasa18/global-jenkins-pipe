@@ -3,41 +3,54 @@ def call(Map config = [:]) {
         agent any
 
         stages {
-            stage('Prepare Environtment') {
+            stage('Prepare Environment') {
                 steps {
                     script {
-                        checkout scm
-                        env.GIT_COMMIT_HASH = sh(
-                            script: 'git rev-parse --short HEAD',
-                            returnStdout: true
-                        ).trim()
-
-                        echo "Git Commit Hash: ${env.GIT_COMMIT_HASH}"
-                    }
-                }
-            }
-            stage('Build') {
-                steps {
-                    script {
-                        // Run shell command using 'sh'
-                        sh 'ls -la'
-
-                        if (config.projectType == 'laravel') {
-                            echo "docker build -t laravel-${config.projectName}:${env.GIT_COMMIT_HASH}."
-                        } else if (config.projectType == 'golang') {
-                            echo "docker build -t golang-${config.projectName}:${env.GIT_COMMIT_HASH}."
-                        } else if (config.projectType == 'java') {
-                            echo "docker build -t java-${config.projectName}:${env.GIT_COMMIT_HASH}."
+                        // Skip SCM checkout if the project type is 'dockerfile'
+                        if (config.projectType != 'dockerfile') {
+                            checkout scm
+                            env.GIT_COMMIT_HASH = sh(
+                                script: 'git rev-parse --short HEAD',
+                                returnStdout: true
+                            ).trim()
+                            echo "Git Commit Hash: ${env.GIT_COMMIT_HASH}"
                         } else {
-                            echo "docker build -t other-${config.projectName}:${env.GIT_COMMIT_HASH}."
+                            echo "Skipping SCM checkout for Dockerfile project type"
                         }
                     }
                 }
             }
+
+            stage('Build') {
+                steps {
+                    script {
+                        sh 'ls -la'
+
+                        switch (config.projectType) {
+                            case 'laravel':
+                                echo "docker build -t laravel-${config.projectName}:${env.GIT_COMMIT_HASH} ."
+                                break
+                            case 'golang':
+                                echo "docker build -t golang-${config.projectName}:${env.GIT_COMMIT_HASH} ."
+                                break
+                            case 'java':
+                                echo "docker build -t java-${config.projectName}:${env.GIT_COMMIT_HASH} ."
+                                break
+                            case 'dockerfile':
+                                echo "Pulling Docker image: ${config.dockerImage}"
+                                sh "docker pull ${config.dockerImage}"
+                                break
+                            default:
+                                echo "docker build -t other-${config.projectName}:${env.GIT_COMMIT_HASH} ."
+                                break
+                        }
+                    }
+                }
+            }
+
             stage('Approval') {
                 steps {
                     script {
-                        // Interactive prompt for approval
                         def userInput = input(
                             message: 'Do you want to proceed with the deployment?',
                             parameters: [
@@ -51,28 +64,60 @@ def call(Map config = [:]) {
                     }
                 }
             }
-             stage('Test') {
+
+            stage('Test') {
                 steps {
                     script {
-                        if (config.projectType == 'java' && config.shouldRunJavaUnitTest) {
-                            echo "mvn test"
-                        }
-                        if (config.projectType == 'java' && config.shouldRunJavaIntegrationTest) {
-                            echo "mvn integration-test"
-                        }
-                        if (config.projectType == 'golang' && config.shouldRunGoUnitTest) {
-                            echo "go test ./..."
+                        if (config.projectType == 'java') {
+                            if (config.shouldRunJavaUnitTest) {
+                                echo "Running Java unit tests: mvn test"
+                            }
+                            if (config.shouldRunJavaIntegrationTest) {
+                                echo "Running Java integration tests: mvn integration-test"
+                            }
+                        } else if (config.projectType == 'golang' && config.shouldRunGoUnitTest) {
+                            echo "Running Go unit tests: go test ./..."
                         }
                     }
                 }
             }
+
             stage('Deploy') {
                 steps {
                     script {
                         if (config.createHelm) {
-                         echo "helm upgrade --install ${config.projectName} mychart"
+                            echo "Running Helm upgrade/install: helm upgrade --install ${config.projectName} mychart"
                         }
-                        echo "docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
+
+                        if (config.projectType == 'dockerfile') {
+                            // Check if exposedPort and appPort are defined, else return error
+                            if (!config.exposedPort || !config.appPort) {
+                                error("Exposed port and app port must be defined for Dockerfile project type")
+                            }
+
+                            def exposedPort = config.exposedPort
+                            def appPort = config.appPort
+                            def containerName = config.containerName ?: config.projectName
+                            def imageName = config.dockerImage
+
+                            echo "Stop docker container: docker stop ${containerName}"
+                            sh "docker stop ${containerName}"
+
+                            echo "Remove docker container: docker rm ${containerName}"
+                            sh "docker rm ${containerName}"
+
+                            echo "Running Docker container: docker run -d --restart always -p ${exposedPort}:${appPort} --name ${containerName} ${imageName}"
+                            sh "docker run -d --restart always -p ${exposedPort}:${appPort} --name ${containerName} ${imageName}"
+                            
+                            // Optional sleep after container start
+                            sleep time: 10, unit: 'SECONDS'
+                            
+                            echo "Pruning Docker images"
+                            sh "docker image prune --all"
+                        } else {
+                            echo "Pushing Docker image: docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
+                            sh "docker push ${config.projectType}-${config.projectName}:${env.GIT_COMMIT_HASH}"
+                        }
                     }
                 }
             }
