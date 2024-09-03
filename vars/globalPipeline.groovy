@@ -100,11 +100,18 @@ def call(Map config = [:]) {
                             def containerName = config.containerName ?: config.projectName
                             def imageName = config.dockerImage
 
-                            echo "Stop docker container: docker stop ${containerName}"
-                            sh "docker stop ${containerName}"
+                            // Check if container exists
+                            def containerExists = sh(script: "docker container ls -a -q -f name=${containerName}", returnStdout: true).trim()
 
-                            echo "Remove docker container: docker rm ${containerName}"
-                            sh "docker rm ${containerName}"
+                            if (containerExists) {
+                                echo "Stopping Docker container: ${containerName}"
+                                sh "docker stop ${containerName} || true" // Stop container if running
+
+                                echo "Removing Docker container: ${containerName}"
+                                sh "docker rm ${containerName} || true"   // Remove the container if it exists
+                            } else {
+                                echo "Container ${containerName} does not exist. Skipping stop and remove steps."
+                            }
 
                             echo "Running Docker container: docker run -d --restart always -p ${exposedPort}:${appPort} --name ${containerName} ${imageName}"
                             sh "docker run -d --restart always -p ${exposedPort}:${appPort} --name ${containerName} ${imageName}"
