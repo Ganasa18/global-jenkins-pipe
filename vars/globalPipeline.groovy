@@ -54,11 +54,11 @@ def call(Map config = [:]) {
                         def userInput = input(
                             message: 'Do you want to proceed with the deployment?',
                             parameters: [
-                                [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Approve Deployment?', name: 'Approve']
+                                [$class: 'ChoiceParameterDefinition',  choices: 'Yes\nNo', description: 'Approve Deployment?', name: 'Approve']
                             ]
                         )
 
-                        if (!userInput) {
+                        if (userInput == 'No') {
                             error("Deployment was not approved. Aborting pipeline.")
                         }
                     }
