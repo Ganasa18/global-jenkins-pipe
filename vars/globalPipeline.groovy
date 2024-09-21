@@ -60,6 +60,8 @@ def call(Map config = [:]) {
 
                         if (userInput == 'No') {
                             error("Deployment was not approved. Aborting pipeline.")
+                        }else {
+                            echo "Deployment approved. Proceeding with the pipeline."
                         }
                     }
                 }
